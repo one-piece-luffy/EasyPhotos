@@ -31,6 +31,10 @@
                     android:id="@+id/album_camera_multi"
 
                     android:title="@string/album_camera_multi" />
+                <item
+                    android:id="@+id/album_puzzle"
+
+                    android:title="@string/album_puzzle" />
 
                 <item
                     android:id="@+id/album_ad"

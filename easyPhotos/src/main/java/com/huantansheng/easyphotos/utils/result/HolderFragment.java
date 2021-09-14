@@ -16,6 +16,7 @@ import com.huantansheng.easyphotos.engine.ImageEngine;
 import com.huantansheng.easyphotos.models.album.entity.Photo;
 import com.huantansheng.easyphotos.ui.EasyPhotosActivity;
 import com.huantansheng.easyphotos.ui.PuzzleActivity;
+import com.huantansheng.easyphotos.ui.PuzzleSelectorActivity;
 
 import java.util.ArrayList;
 
@@ -41,6 +42,10 @@ public class HolderFragment extends Fragment {
     public void startEasyPhoto(SelectCallback callback) {
         mSelectCallback = callback;
         EasyPhotosActivity.start(this, HOLDER_SELECT_REQUEST_CODE);
+    }
+    public void startPuzzle(SelectCallback callback) {
+        mSelectCallback = callback;
+        PuzzleSelectorActivity.start(this, HOLDER_SELECT_REQUEST_CODE);
     }
 
     public void startPuzzleWithPhotos(ArrayList<Photo> photos, boolean replaceCustom, @NonNull ImageEngine imageEngine, PuzzleCallback callback) {

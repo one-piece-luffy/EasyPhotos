@@ -40,6 +40,7 @@ public class PuzzleView extends View {
     private PuzzleLayout puzzleLayout;
 
     private RectF bounds;
+    //边框的宽度
     private int lineSize;
 
     private int duration;
@@ -49,6 +50,7 @@ public class PuzzleView extends View {
     private PuzzlePiece replacePiece;
     private PuzzlePiece previousHandlingPiece;
 
+    //拼图模板线
     private Paint linePaint;
     private Paint selectedAreaPaint;
     private Paint handleBarPaint;
@@ -62,8 +64,9 @@ public class PuzzleView extends View {
     private boolean needDrawOuterLine;
     private boolean touchEnable = true;
     private int lineColor;
-
+    //边框颜色
     private int selectedLineColor;
+    //可拖动的边框颜色
     private int handleBarColor;
     private float piecePadding;
     private float pieceRadian;
@@ -199,14 +202,14 @@ public class PuzzleView extends View {
             }
         }
 
-        // draw outer bounds
+        // draw outer bounds 底部模板外边框
         if (needDrawOuterLine) {
             for (Line outerLine : puzzleLayout.getOuterLines()) {
                 drawLine(canvas, outerLine);
             }
         }
 
-        // draw slant lines
+        // draw slant lines 底部模板内边框
         if (needDrawLine) {
             for (Line line : puzzleLayout.getLines()) {
                 drawLine(canvas, line);

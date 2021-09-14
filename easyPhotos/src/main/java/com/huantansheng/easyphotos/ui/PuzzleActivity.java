@@ -6,15 +6,23 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.annotation.IdRes;
@@ -45,6 +53,7 @@ import com.huantansheng.easyphotos.models.sticker.StickerModel;
 import com.huantansheng.easyphotos.setting.Setting;
 import com.huantansheng.easyphotos.ui.adapter.PuzzleAdapter;
 import com.huantansheng.easyphotos.ui.adapter.TextStickerAdapter;
+import com.huantansheng.easyphotos.utils.bitmap.ImageUtils;
 import com.huantansheng.easyphotos.utils.bitmap.SaveBitmapCallBack;
 import com.huantansheng.easyphotos.utils.media.MediaUtils;
 import com.huantansheng.easyphotos.utils.permission.PermissionUtil;
@@ -64,7 +73,7 @@ import java.util.Locale;
  * Created by huan on 2017/12/4.
  */
 
-public class PuzzleActivity extends AppCompatActivity implements View.OnClickListener, PuzzleAdapter.OnItemClickListener, TextStickerAdapter.OnItemClickListener {
+public class PuzzleActivity extends AppCompatActivity implements View.OnClickListener, PuzzleAdapter.OnItemClickListener, TextStickerAdapter.OnItemClickListener, SeekBar.OnSeekBarChangeListener {
 
     private static WeakReference<Class<? extends Activity>> toClass;
 
@@ -166,13 +175,24 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
     private int deviceWidth = 0;
     private int deviceHeight = 0;
 
-    private TextView tvTemplate, tvTextSticker;
+    private TextView tvTemplate, tvTextSticker, tvTextTiniting;
     private RelativeLayout mRootView, mBottomLayout;
     private TextStickerAdapter textStickerAdapter;
 
     private StickerModel stickerModel;
 
     FloatingActionButton fab;
+
+    LinearLayout mTinitingLayout;
+
+    private SeekBar saturationseekBar = null;
+    private SeekBar brightnessseekBar = null;
+    private SeekBar contrastseekBar = null;
+    PuzzlePiece mCurrentPiece;
+    Bitmap bitmap;
+    private float mContrast, mSaturation, mBright;
+    private final static int MAX_VALUE = 255;   //最大值
+    private final static int MID_VALUE = 127;   //中间值
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -206,8 +226,13 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
 
         tvTemplate = (TextView) findViewById(R.id.tv_template);
         tvTextSticker = (TextView) findViewById(R.id.tv_text_sticker);
+        tvTextTiniting = (TextView) findViewById(R.id.tv_text_tiniting);
         mRootView = (RelativeLayout) findViewById(R.id.m_root_view);
         mBottomLayout = (RelativeLayout) findViewById(R.id.m_bottom_layout);
+        mTinitingLayout = findViewById(R.id.tini);
+        saturationseekBar = (SeekBar) findViewById(R.id.saturationseekbar);
+        brightnessseekBar = (SeekBar) findViewById(R.id.brightnessseekbar);
+        contrastseekBar = (SeekBar) findViewById(R.id.contrastseekbar);
 
         llMenu = (LinearLayout) findViewById(R.id.ll_menu);
         ImageView ivRotate = (ImageView) findViewById(R.id.iv_rotate);
@@ -215,7 +240,7 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
         ImageView ivPadding = (ImageView) findViewById(R.id.iv_padding);
 
         setClick(R.id.iv_replace, R.id.iv_mirror, R.id.iv_flip);
-        setClick(ivRotate, ivCorner, ivPadding, fab, tvTextSticker, tvTemplate);
+        setClick(ivRotate, ivCorner, ivPadding, fab, tvTextSticker, tvTemplate, tvTextTiniting);
 
         ivMenus.add(ivRotate);
         ivMenus.add(ivCorner);
@@ -253,6 +278,129 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
 
             }
         });
+
+        mContrast = (contrastseekBar.getProgress() - MID_VALUE) * 1.0F / MID_VALUE * 180;
+        mSaturation = saturationseekBar.getProgress() * 1.0F / MID_VALUE;
+        mBright = brightnessseekBar.getProgress() * 1.0F / MID_VALUE;
+        setListener();
+    }
+
+    private void setListener() {
+
+        saturationseekBar.setOnSeekBarChangeListener(this);
+        brightnessseekBar.setOnSeekBarChangeListener(this);
+        contrastseekBar.setOnSeekBarChangeListener(this);
+
+//        saturationseekBar
+//                .setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+//                    // 当拖动条的滑块位置发生改变时触发该方法
+//                    public void onProgressChanged(SeekBar arg0, int progress,
+//                                                  boolean fromUser) {
+//                        if(bitmap==null||mCurrentPiece==null)
+//                            return;
+//                        Log.e("asdf","width:"+bitmap.getWidth()+" height:"+bitmap.getHeight());
+//                        // 创建一个相同尺寸的可变的位图区,用于绘制调色后的图片
+//
+//                        Bitmap bmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
+//                                Bitmap.Config.ARGB_8888);
+//                        ColorMatrix cMatrix = new ColorMatrix();
+//                        // 设置饱和度
+//                        cMatrix.setSaturation((float) (progress / 100.0));
+//
+//                        Paint paint = new Paint();
+//                        paint.setColorFilter(new ColorMatrixColorFilter(cMatrix));
+//
+//                        Canvas canvas = new Canvas(bmp);
+//                        // 在Canvas上绘制一个已经存在的Bitmap。这样，dstBitmap就和srcBitmap一摸一样了
+//                        canvas.drawBitmap(bitmap, 0, 0, paint);
+//
+//                        Drawable drawable = new BitmapDrawable(bmp);
+//                        mCurrentPiece.setDrawable(drawable);
+//                        mCurrentPiece.draw(canvas);
+//                        puzzleView.invalidate();
+//
+//                    }
+//
+//                    public void onStartTrackingTouch(SeekBar bar) {
+//                    }
+//
+//                    public void onStopTrackingTouch(SeekBar bar) {
+//                    }
+//                });
+//
+//        brightnessseekBar
+//                .setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+//                    // 当拖动条的滑块位置发生改变时触发该方法
+//                    public void onProgressChanged(SeekBar arg0, int progress,
+//                                                  boolean fromUser) {
+//                        if(bitmap==null||mCurrentPiece==null)
+//                            return;
+//                        Log.e("asdf","width:"+bitmap.getWidth()+" height:"+bitmap.getHeight());
+//                        Bitmap bmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
+//                                Bitmap.Config.ARGB_8888);
+//                        int brightness = progress - 127;
+//                        ColorMatrix cMatrix = new ColorMatrix();
+//                        cMatrix.set(new float[]{1, 0, 0, 0, brightness, 0, 1,
+//                                0, 0, brightness,// 改变亮度
+//                                0, 0, 1, 0, brightness, 0, 0, 0, 1, 0});
+//
+//                        Paint paint = new Paint();
+//                        paint.setColorFilter(new ColorMatrixColorFilter(cMatrix));
+//
+//                        Canvas canvas = new Canvas(bmp);
+//                        // 在Canvas上绘制一个已经存在的Bitmap。这样，dstBitmap就和srcBitmap一摸一样了
+//                        canvas.drawBitmap(bitmap, 0, 0, paint);
+//
+//                        Drawable drawable = new BitmapDrawable(bmp);
+//                        mCurrentPiece.setDrawable(drawable);
+//                        mCurrentPiece.draw(canvas);
+//                        puzzleView.invalidate();
+//                    }
+//
+//                    public void onStartTrackingTouch(SeekBar bar) {
+//                    }
+//
+//                    public void onStopTrackingTouch(SeekBar bar) {
+//                    }
+//                });
+//
+//        contrastseekBar
+//                .setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+//                    // 当拖动条的滑块位置发生改变时触发该方法
+//                    public void onProgressChanged(SeekBar arg0, int progress,
+//                                                  boolean fromUser) {
+//                        if(bitmap==null||mCurrentPiece==null)
+//                            return;
+//                        Log.e("asdf","width:"+bitmap.getWidth()+" height:"+bitmap.getHeight());
+//                        Bitmap bmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
+//                                Bitmap.Config.ARGB_8888);
+//                        // int brightness = progress - 127;
+//                        float contrast = (float) ((progress + 64) / 128.0);
+//                        ColorMatrix cMatrix = new ColorMatrix();
+//                        cMatrix.set(new float[]{contrast, 0, 0, 0, 0, 0,
+//                                contrast, 0, 0, 0,// 改变对比度
+//                                0, 0, contrast, 0, 0, 0, 0, 0, 1, 0});
+//
+//                        Paint paint = new Paint();
+//                        paint.setColorFilter(new ColorMatrixColorFilter(cMatrix));
+//
+//                        Canvas canvas = new Canvas(bmp);
+//                        // 在Canvas上绘制一个已经存在的Bitmap。这样，dstBitmap就和srcBitmap一摸一样了
+//                        canvas.drawBitmap(bitmap, 0, 0, paint);
+//
+//                        Drawable drawable = new BitmapDrawable(bmp);
+//                        mCurrentPiece.setDrawable(drawable);
+//                        mCurrentPiece.draw(canvas);
+//                        puzzleView.invalidate();
+//                    }
+//
+//                    public void onStartTrackingTouch(SeekBar arg0) {
+//
+//                    }
+//
+//                    public void onStopTrackingTouch(SeekBar seekBar) {
+//                    }
+//                });
     }
 
     private void initRecyclerView() {
@@ -273,13 +421,14 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
         puzzleView.setOnPieceSelectedListener(new PuzzleView.OnPieceSelectedListener() {
             @Override
             public void onPieceSelected(PuzzlePiece piece, int position) {
-
+                mCurrentPiece = piece;
                 if (null == piece) {
                     toggleIvMenu(R.id.iv_replace);
                     llMenu.setVisibility(View.GONE);
                     degreeSeekBar.setVisibility(View.GONE);
                     degreeIndex = -1;
                     controlFlag = -1;
+                    bitmap = null;
                     return;
                 }
 
@@ -290,6 +439,9 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
                 }
                 llMenu.setVisibility(View.VISIBLE);
                 degreeIndex = position;
+
+                BitmapDrawable bd = (BitmapDrawable) mCurrentPiece.getDrawable();
+                bitmap = bd.getBitmap();
             }
         });
     }
@@ -450,14 +602,27 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
         } else if (R.id.tv_template == id) {
             tvTemplate.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_accent));
             tvTextSticker.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
+            tvTextTiniting.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
 
             rvPuzzleTemplet.setAdapter(puzzleAdapter);
+            rvPuzzleTemplet.setVisibility(View.VISIBLE);
+            mTinitingLayout.setVisibility(View.GONE);
 
         } else if (R.id.tv_text_sticker == id) {
             tvTextSticker.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_accent));
             tvTemplate.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
+            tvTextTiniting.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
 
             rvPuzzleTemplet.setAdapter(textStickerAdapter);
+            rvPuzzleTemplet.setVisibility(View.VISIBLE);
+            mTinitingLayout.setVisibility(View.GONE);
+        } else if (R.id.tv_text_tiniting == id) {
+            tvTextTiniting.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_accent));
+            tvTemplate.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
+            tvTextSticker.setTextColor(ContextCompat.getColor(this, R.color.easy_photos_fg_primary));
+
+            mTinitingLayout.setVisibility(View.VISIBLE);
+            rvPuzzleTemplet.setVisibility(View.GONE);
         } else if (R.id.fab == id) {
             processBottomLayout();
         }
@@ -707,5 +872,36 @@ public class PuzzleActivity extends AppCompatActivity implements View.OnClickLis
         for (View v : views) {
             v.setOnClickListener(this);
         }
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        if (bitmap == null || mCurrentPiece == null)
+            return;
+
+        int id = seekBar.getId();
+        if (id == R.id.contrastseekbar) {//将0-255的值转换为色调值
+            mContrast = (progress - MID_VALUE) * 1.0F / MID_VALUE * 180;
+        } else if (id == R.id.saturationseekbar) {//将0-255值转换为饱和度值
+            mSaturation = progress * 1.0F / MID_VALUE;
+        } else if (id == R.id.brightnessseekbar) {//将0-255的值转换为亮度值
+            mBright = progress * 1.0F / MID_VALUE;
+        }
+        Log.e("asdf", "mHue:" + mContrast + " mSaturation:" + mSaturation+" mLum:"+mBright);
+        Bitmap result = ImageUtils.handleImageEffect(bitmap,
+                mContrast, mSaturation, mBright);
+        Drawable drawable = new BitmapDrawable(result);
+        mCurrentPiece.setDrawable(drawable);
+        puzzleView.invalidate();
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+
     }
 }

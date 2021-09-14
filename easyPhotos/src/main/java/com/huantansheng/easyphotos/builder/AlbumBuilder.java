@@ -611,6 +611,23 @@ public class AlbumBuilder {
         }
         throw new RuntimeException("mActivity or mFragmentV maybe null, you can not use this method... ");
     }
+    /**
+     * 启动拼图
+     *
+     * @param callback SelectCallback 选择回调
+     */
+    public void startPuzzle(SelectCallback callback) {
+        setSettingParams();
+        if (null != mActivity && null != mActivity.get() && mActivity.get() instanceof FragmentActivity) {
+            EasyResult.get((FragmentActivity) mActivity.get()).startPuzzle(callback);
+            return;
+        }
+        if (null != mFragmentV && null != mFragmentV.get()) {
+            EasyResult.get(mFragmentV.get()).startPuzzle(callback);
+            return;
+        }
+        throw new RuntimeException("mActivity or mFragmentV maybe null, you can not use this method... ");
+    }
 
     /**
      * 清除所有数据

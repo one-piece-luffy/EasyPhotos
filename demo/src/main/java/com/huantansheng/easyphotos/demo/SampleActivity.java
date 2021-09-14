@@ -136,10 +136,14 @@ public class SampleActivity extends AppCompatActivity
     private SelectCallback callback = new SelectCallback() {
         @Override
         public void onResult(ArrayList<Photo> photos, ArrayList<String> paths, boolean isOriginal) {
-            selectedPhotoList.clear();
-            selectedPhotoList.addAll(photos);
-            selectedPhotoPathList.clear();
-            selectedPhotoPathList.addAll(paths);
+            if(photos!=null){
+                selectedPhotoList.clear();
+                selectedPhotoList.addAll(photos);
+            }
+            if (paths != null) {
+                selectedPhotoPathList.clear();
+                selectedPhotoPathList.addAll(paths);
+            }
             adapter.notifyDataSetChanged();
             rvImage.smoothScrollToPosition(0);
         }
@@ -184,6 +188,12 @@ public class SampleActivity extends AppCompatActivity
                 EasyPhotos.createAlbum(this, true, GlideEngine.getInstance())
                         .setCount(22)
                         .start(callback);
+                break;
+
+            case R.id.album_puzzle://相册多选，有相机功能
+                EasyPhotos.createAlbum(this, true, GlideEngine.getInstance())
+                        .setCount(22)
+                        .startPuzzle(callback);
                 break;
 
             case R.id.album_ad://相册中包含广告

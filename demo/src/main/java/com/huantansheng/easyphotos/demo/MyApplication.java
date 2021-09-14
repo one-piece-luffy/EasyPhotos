@@ -21,5 +21,9 @@ public class MyApplication extends Application {
         }
         CrashReport.initCrashReport(getApplicationContext(), "4c251b8f40", false);
         LeakCanary.install(this);
+
+
+        CrashHandler crashHandler = CrashHandler.getInstance();
+        crashHandler.init(getApplicationContext());
     }
 }

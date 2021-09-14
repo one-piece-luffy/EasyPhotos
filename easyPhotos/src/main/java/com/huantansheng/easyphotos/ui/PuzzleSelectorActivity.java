@@ -9,10 +9,14 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
+import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.IdRes;
@@ -23,25 +27,38 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
+import com.huantansheng.easyphotos.EasyPhotos;
 import com.huantansheng.easyphotos.R;
 import com.huantansheng.easyphotos.constant.Code;
 import com.huantansheng.easyphotos.models.album.AlbumModel;
 import com.huantansheng.easyphotos.models.album.entity.Photo;
+import com.huantansheng.easyphotos.result.Result;
 import com.huantansheng.easyphotos.setting.Setting;
 import com.huantansheng.easyphotos.ui.adapter.AlbumItemsAdapter;
 import com.huantansheng.easyphotos.ui.adapter.PuzzleSelectorAdapter;
 import com.huantansheng.easyphotos.ui.adapter.PuzzleSelectorPreviewAdapter;
 import com.huantansheng.easyphotos.ui.widget.PressedTextView;
 import com.huantansheng.easyphotos.utils.color.ColorUtils;
+import com.huantansheng.easyphotos.utils.settings.SettingsUtils;
 import com.huantansheng.easyphotos.utils.system.SystemUtils;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
+/**
+ * 选择拼图图片页面
+ */
 public class PuzzleSelectorActivity extends AppCompatActivity implements View.OnClickListener, AlbumItemsAdapter.OnClickListener, PuzzleSelectorAdapter.OnClickListener, PuzzleSelectorPreviewAdapter.OnClickListener {
 
     public static void start(Activity activity) {
         Intent intent = new Intent(activity, PuzzleSelectorActivity.class);
         activity.startActivityForResult(intent, Code.REQUEST_PUZZLE_SELECTOR);
+    }
+    public static void start(androidx.fragment.app.Fragment fragment, int requestCode) {
+        Intent intent = new Intent(fragment.getContext(), PuzzleSelectorActivity.class);
+        intent.putExtra("code",requestCode);
+        fragment.startActivityForResult(intent, requestCode);
     }
 
     private AlbumModel albumModel;
@@ -61,7 +78,7 @@ public class PuzzleSelectorActivity extends AppCompatActivity implements View.On
     private ArrayList<Photo> selectedPhotos = new ArrayList<>();
 
     private PressedTextView tvDone;
-
+    private int mCode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,13 +96,44 @@ public class PuzzleSelectorActivity extends AppCompatActivity implements View.On
         albumModel = AlbumModel.getInstance();
 //        albumModel.query(this, null);
         if (null == albumModel || albumModel.getAlbumItems().isEmpty()) {
-            finish();
-            return;
+            AlbumModel.CallBack albumModelCallBack = new AlbumModel.CallBack() {
+                @Override
+                public void onAlbumWorkedCallBack() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showProgress(false);
+                            initView();
+                        }
+                    });
+                }
+            };
+            albumModel = AlbumModel.getInstance();
+            showProgress(true);
+            albumModel.query(this, albumModelCallBack);
+            if (!Setting.selectedPhotos.isEmpty()) {
+                for (Photo selectedPhoto : Setting.selectedPhotos) {
+                    if (TextUtils.isEmpty(selectedPhoto.name)) {
+                        albumModel.fillPhoto(this, selectedPhoto);
+                    }
+                    selectedPhoto.selectedOriginal = Setting.selectedOriginal;
+                    Result.addPhoto(selectedPhoto);
+                }
+            }
+        }else {
+            initView();
         }
-        initView();
+
     }
 
     private void initView() {
+        if (null == albumModel || albumModel.getAlbumItems().isEmpty()) {
+            Toast.makeText(this, R.string.no_photos_easy_photos, Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        Intent intent=getIntent();
+        mCode=intent.getIntExtra("code",0);
         setClick(R.id.iv_back);
         tvAlbumItems = (PressedTextView) findViewById(R.id.tv_album_items);
         tvAlbumItems.setText(albumModel.getAlbumItems().get(0).name);
@@ -255,9 +303,50 @@ public class PuzzleSelectorActivity extends AppCompatActivity implements View.On
 
         if (resultCode == RESULT_OK) {
             if (requestCode == Code.REQUEST_PUZZLE) {
-                setResult(RESULT_OK, data);
-                finish();
+//                setResult(RESULT_OK, data);
+//                finish();
+
+                if(mCode!=0){
+                    Photo photo=data.getParcelableExtra(EasyPhotos.RESULT_PHOTOS);
+                    String path=data.getStringExtra(EasyPhotos.RESULT_PATHS);
+                    ArrayList<Photo> listPhoto=new ArrayList<>();
+                    listPhoto.add(photo);
+                    ArrayList<String> listPath=new ArrayList<>();
+                    listPath.add(path);
+                    Intent intent = new Intent();
+                    intent.putStringArrayListExtra(EasyPhotos.RESULT_PATHS, listPath);
+                    intent.putParcelableArrayListExtra(EasyPhotos.RESULT_PHOTOS, listPhoto);
+                    setResult(RESULT_OK, intent);
+                    finish();
+                }else {
+                    setResult(RESULT_OK, data);
+                    finish();
+                }
+
             }
         }
+
+    }
+    private void showProgress(final boolean show, final String... msgs) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final FrameLayout flProgress = findViewById(R.id.frame_progress);
+                if (show) {
+                    flProgress.setOnClickListener(PuzzleSelectorActivity.this);
+                    flProgress.setVisibility(View.VISIBLE);
+                    final TextView tvMessage = findViewById(R.id.tv_progress_message);
+                    if (msgs == null || msgs.length == 0) {
+                        tvMessage.setVisibility(View.GONE);
+                    } else {
+                        tvMessage.setText(msgs[0]);
+                        tvMessage.setVisibility(View.VISIBLE);
+                    }
+                } else {
+                    flProgress.setOnClickListener(null);
+                    flProgress.setVisibility(View.GONE);
+                }
+            }
+        });
     }
 }

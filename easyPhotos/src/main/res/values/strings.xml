@@ -55,6 +55,7 @@
     <string name="template_easy_photos">模板</string>
 
     <string name="text_sticker_easy_photos">文字</string>
+    <string name="text_sticker_easy_tinting">调色</string>
 
     <string name="text_sticker_date_easy_photos">日期</string>
 
@@ -93,4 +94,7 @@
     <string name="ucrop_scale">缩放</string>
 
     <string name="ucrop_crop">裁剪</string>
+    <string name="saturation">饱和度</string>
+    <string name="brightness">亮度</string>
+    <string name="contrast">对比度</string>
 </resources>

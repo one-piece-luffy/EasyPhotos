@@ -74,6 +74,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * 相册
+ */
 public class EasyPhotosActivity extends AppCompatActivity implements AlbumItemsAdapter
         .OnClickListener, PhotosAdapter.OnClickListener, AdListener, View.OnClickListener {
 
